@@ -104,6 +104,16 @@ public class GetOPCData extends AbstractProcessor {
             .addValidator(Validator.VALID)
             .build();
 
+    public static final PropertyDescriptor OUTPUT_FORMAT = new PropertyDescriptor
+            .Builder().name("Output Format")
+            .description("Output format")
+            .required(true)
+            .sensitive(false)
+            .allowableValues("Normal", "JSON")
+            .defaultValue("Normal")
+            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+            .build();
+
     public static final PropertyDescriptor AGGREGATE_RECORD = new PropertyDescriptor
             .Builder().name("Aggregate Records")
             .description("Whether to aggregate records. If this is set to true, then variable with the same time stamp will be merged into a single line. This is useful for batch-based data.")
@@ -138,6 +148,8 @@ public class GetOPCData extends AbstractProcessor {
         descriptors.add(TAG_LIST_SOURCE);
         descriptors.add(TAG_LIST_FILE);
         descriptors.add(AGGREGATE_RECORD);
+        descriptors.add(OUTPUT_FORMAT);
+
         this.descriptors = Collections.unmodifiableList(descriptors);
 
         final Set<Relationship> relationships = new HashSet<Relationship>();
@@ -184,8 +196,7 @@ public class GetOPCData extends AbstractProcessor {
         OPCUAService opcUAService;
 
         try {
-            opcUAService = context.getProperty(OPCUA_SERVICE)
-                    .asControllerService(OPCUAService.class);
+            opcUAService = context.getProperty(OPCUA_SERVICE).asControllerService(OPCUAService.class);
         } catch (Exception ex) {
             getLogger().error(ex.getMessage());
             return;
@@ -234,7 +245,16 @@ public class GetOPCData extends AbstractProcessor {
         byte[] values = opcUAService.getValue(requestedTagnames.get(), timestamp.get(),
                 excludeNullValue.get(), nullValueString);
 
-        if(context.getProperty(AGGREGATE_RECORD).asBoolean()) {
+        if(context.getProperty(OUTPUT_FORMAT).toString().equals("JSON"))
+        {
+            values = jsonRecord(values).getBytes();
+            
+            Map<String, String> attrMap = new HashMap<>();
+            attrMap.put("csvHeader", "timestamp," + String.join(",", requestedTagnames.get()));
+            flowFile = session.putAllAttributes(flowFile, attrMap); 
+            flowFile = session.putAttribute( flowFile, "mime.type", "application/json" );           
+        }   
+        else if(context.getProperty(AGGREGATE_RECORD).asBoolean()) {
             values = mergeRecord(values).getBytes();
             // add csvHeader attribute to flowfile
             Map<String, String> attrMap = new HashMap<>();
@@ -296,6 +316,61 @@ public class GetOPCData extends AbstractProcessor {
             sb.append(fields[VALUE_INDEX]);
             if( i < (rawMsgs.length - 1)) sb.append(",");
         }
+
+        return sb.toString();
+    }
+
+    private String jsonRecord(byte[] values){
+        
+        int SOURCE_TS_INDEX;
+        int VALUE_INDEX;
+        int STATUS_CODE_INDEX;
+        int TAG_NAME;
+
+        if (!timestamp.get().equals("Both")) {
+            TAG_NAME = 0;
+            SOURCE_TS_INDEX = 1;
+            VALUE_INDEX = 2;
+            STATUS_CODE_INDEX = 3;
+        } else {
+            TAG_NAME = 0;
+            SOURCE_TS_INDEX = 2;
+            VALUE_INDEX = 3;
+            STATUS_CODE_INDEX = 4;
+        }
+
+        
+        String[] rawMsgs = new String(values).split(System.lineSeparator());
+        if(rawMsgs.length == 0) 
+            return "";
+
+        StringBuilder sb = new StringBuilder();
+        
+        
+        boolean tsAppended = false;
+
+        String obj = "{";
+
+        for(int i=0; i<rawMsgs.length; i++) {
+            String[] fields = rawMsgs[i].trim().split(",");
+
+            if(!tsAppended){
+                // Use the source timestamp of the first element as the timestamp
+                obj+= "\"SOURCE_TS\":\""+ fields[SOURCE_TS_INDEX]+"\",";
+                tsAppended = true;
+            }
+
+            if (!fields[STATUS_CODE_INDEX].equals("0")) 
+                continue;
+            
+            obj+=  "\""+fields[TAG_NAME]+"\":\""+fields[VALUE_INDEX]+"\"";                                                                                                 
+
+            if( i < (rawMsgs.length - 1)) 
+                obj+=  ",";
+        }
+
+        obj+="}";
+        sb.append(obj);
 
         return sb.toString();
     }

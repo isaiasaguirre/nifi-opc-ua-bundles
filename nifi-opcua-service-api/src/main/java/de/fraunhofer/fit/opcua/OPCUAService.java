@@ -28,15 +28,13 @@ import java.util.concurrent.BlockingQueue;
 @CapabilityDescription("Example Service API.")
 public interface OPCUAService extends ControllerService {
 
-    byte[] getValue(List<String> reqTagNames, String returnTimestamp, boolean excludeNullValue,
-                    String nullValueString) throws ProcessException;
+    byte[] getValue(List<String> reqTagNames, String returnTimestamp, boolean excludeNullValue, String nullValueString) throws ProcessException;
 
-    byte[] getNodes(String printIndent, int maxRecursiveDepth, int maxReferencePerNode,
-                    boolean printNonLeafNode, String rootNodeId)
-            throws ProcessException;
+    byte[] getNodes(String printIndent, int maxRecursiveDepth, int maxReferencePerNode, boolean printNonLeafNode, String rootNodeId) throws ProcessException;
 
-    String subscribe(List<String> reqTagNames, BlockingQueue<String> queue,
-                     boolean tsChangedNotify, long minPublishInterval) throws ProcessException;
+    String subscribe(List<String> reqTagNames, BlockingQueue<String> queue, boolean tsChangedNotify, long minPublishInterval) throws ProcessException;
 
     void unsubscribe(String subscriberUid);
+
+    boolean writeValue(String tagName,String tagType, String tagValue);
 }

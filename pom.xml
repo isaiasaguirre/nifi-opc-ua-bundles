@@ -17,13 +17,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <properties>
-        <nifi_version>1.7.1</nifi_version>
+        <nifi_version>1.11.4</nifi_version>
     </properties>
 
     <parent>
         <groupId>org.apache.nifi</groupId>
         <artifactId>nifi-nar-bundles</artifactId>
-        <version>1.7.1</version>
+        <version>1.11.4</version>
     </parent>
 
     <groupId>de.fraunhofer.fit</groupId>

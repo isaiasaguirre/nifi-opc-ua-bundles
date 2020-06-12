@@ -44,6 +44,8 @@ import org.eclipse.milo.opcua.stack.core.UaException;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
 import org.eclipse.milo.opcua.stack.core.types.builtin.*;
 import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UInteger;
+import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.ULong;
+import org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.UShort;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.DataChangeTrigger;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.MessageSecurityMode;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.MonitoringMode;
@@ -506,6 +508,65 @@ public class StandardOPCUAService extends AbstractControllerService implements O
             throw new ProcessException(e.getMessage());
         }
 
+    }
+    
+    @Override
+    public boolean writeValue(String tagName, String tagType, String tagValue) {
+        
+        try {
+            if (opcClient == null) {
+                throw new ProcessException("OPC Client is null. OPC UA service was not enabled properly.");
+            }
+
+            NodeId nodeId;
+            nodeId = NodeId.parse(tagName);
+                        
+            DataValue dataValue;
+            switch(tagType)
+            {
+                case "Boolean": 
+                    dataValue = new DataValue(new Variant(Boolean.parseBoolean(tagValue)),null, null);
+                    break;
+                case "Int16": 
+                    dataValue = new DataValue(new Variant(Short.parseShort(tagValue)),null, null);
+                    break;
+                case "UInt16": 
+                    dataValue = new DataValue(new Variant(UShort.valueOf(tagValue)),null, null);
+                    break;
+                case "Int32": 
+                    dataValue = new DataValue(new Variant(Integer.parseInt(tagValue)),null, null);
+                    break;
+                case "UInt32": 
+                    dataValue = new DataValue(new Variant(UInteger.valueOf(tagValue)),null, null);
+                    break;
+                case "Int64": 
+                    dataValue = new DataValue(new Variant(Long.parseLong((String) tagValue)), null, null);
+                    break;
+                case "UInt64": 
+                    dataValue = new DataValue(new Variant(ULong.valueOf(tagValue)),null, null);
+                    break;
+                case "Float": 
+                    dataValue = new DataValue(new Variant(Float.parseFloat(tagValue)),null, null);
+                    break;
+                case "Double": 
+                    dataValue = new DataValue(new Variant(Double.parseDouble(tagValue)),null, null);
+                    break;     
+                case "String": 
+                    dataValue = new DataValue(new Variant(tagValue),null, null);
+                    break;                  
+                default:
+                    dataValue = new DataValue(new Variant((Integer)0),null, null);
+
+            }             
+                    
+            StatusCode res = opcClient.writeValue(nodeId, dataValue).get();            
+
+            return res.isGood();            
+
+        } catch (Exception e) {
+            throw new ProcessException(e.getMessage());            
+        }
+                
     }
 
     // Choose the proper endpoint from discovered endpoints according to security settings
